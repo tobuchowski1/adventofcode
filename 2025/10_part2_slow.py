@@ -1,4 +1,4 @@
-# import sys
+import sys
 from queue import Queue
 
 result = 0
@@ -15,10 +15,10 @@ l7 = ["[#.##...#..] (0,4,5,8) (2,3,6,7,8,9) (0,1,6) (3,4,7) (0,9) (0,2,3,4,7,8,9
 
 l8 = ["[.##..] (1,2) (0,2,3,4) (0,1,3,4) {17,20,19,17,17}"]
 
-for line in l8: #sys.stdin:
+for line in sys.stdin:
     line = line.strip()
     data = line.split(" ")
-    print(line)
+    # print(line)
     start_pos = 0
     target = []
     buttons: dict[int, list[list[int]]] = {}
@@ -44,12 +44,16 @@ for line in l8: #sys.stdin:
     visited = set()
     step = 0
 
+    if indicator_count > 7:
+        continue
+
     q.put((0, [0] * indicator_count, 0, 0))
     while not q.empty():
         step += 1
         depth, pos,  b_idx, t_idx = q.get()
         # print(depth, pos, ">>", target, step)
         if pos == target:
+            print(line + f" ?{depth}?")
             result += depth
             break
 

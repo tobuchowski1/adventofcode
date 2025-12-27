@@ -40,7 +40,7 @@ def loop_gauss_till_halt(vectors_original: list[list[int]]) -> list[list[int]]:
     vectors = vectors_original
     gaussian = gauss(vectors)
     while vectors != gaussian:
-        print(vectors, "??", gaussian)
+        # print(vectors, "??", gaussian)
         vectors = gaussian
         gaussian = gauss(vectors)
 
@@ -48,16 +48,19 @@ def loop_gauss_till_halt(vectors_original: list[list[int]]) -> list[list[int]]:
 
 def resolve_variables(input_vectors: list[list[int]]) -> list[list[int]] | None:
     gaussian = loop_gauss_till_halt(input_vectors)
-    gresult = [sum([v[i] for v in gaussian]) for i in range(len(gaussian[0]))]
+    # gresult = [sum([v[i] for v in gaussian]) for i in range(len(gaussian[0]))]
+    # print(gaussian)
 
-    if all([x==1 for x in gresult[:-1]]):
+    if all([sum(v[:-1])==1 for v in gaussian]):
         if any(v[-1]<0 for v in gaussian):
             return None
+        # breakpoint()
         return gaussian
 
     # breakpoint()
-
-    for v in gaussian:
+    best_gaussian = None
+    best_sum = 1000000000
+    for v in gaussian[:-1]:
         if sum([x for x in v[:-1]]) > 1:
             idx = [i for i,y in enumerate(v) if y != 0][0]
             for val in range(v[-1]+1)[::-1]:
@@ -70,12 +73,17 @@ def resolve_variables(input_vectors: list[list[int]]) -> list[list[int]] | None:
                 split_second[-1] -= val
 
                 new_input = [v.copy() for v in input_vectors] + [split_first,split_second]
-
+                # breakpoint()
                 nresult = resolve_variables(new_input)
                 if nresult != None:
-                    return nresult
+                    # return nresult
+                    nsum = sum([v[-1] for v in nresult])
+                    if best_sum > nsum:
+                        best_sum = nsum
+                        best_gaussian = nresult
+            break
 
-    return None
+    return best_gaussian
 
 
 ll = ["[#....#...] (3,5,6,8) (1,6) (1,2,4,7,8) (3,4,5,7,8) (0,2,4,5,6,8) (0,1,3) (1,2,6,7,8) (0,5) (0,1,4,6,8) {42,46,38,34,52,33,33,36,61}"] # 79
@@ -84,8 +92,11 @@ l3 = ["[..] (0,1) (1) (0) {3,3}"]
 l4 = ["[...] (0,2) (0,1) (0,1,2) {8,7,7}"]
 l5 = ["[##..] (1,3) (1) (1,2) (0,1) (2,3) {13,66,31,27}"] # 69
 l8 = ["[.##..] (1,2) (0,2,3,4) (0,1,3,4) {17,20,19,17,17}"]
+l9 = ["[##.#] (0) (0,1) (1,2,3) (1,2) (2,3) {184,206,50,38} ?234?"]
+l10 = ["[.##.] (0,2) (1) (1,3) (0,3) (2,3) (3) {19,12,14,41} ?43?"]
+l11 = ["[##..#] (1,2,4) (1,2) (1,3,4) (1,2,3) (2,3) (0,2,3) (2,4) {13,49,69,58,49} ?88?"]
 
-for line in l8:
+for line in sys.stdin:
     line = line.strip()
     data = line.split(" ")
     print(line)
@@ -93,6 +104,7 @@ for line in l8:
     buttons: list[list[int]] = []
     button_lengths = []
     indicator_count = 0
+    expected_result = None
     for d in data:
         if d.startswith("["):
             indicator_count = len(d.removesuffix(']').removeprefix('['))
@@ -104,6 +116,8 @@ for line in l8:
             for n in d.removeprefix('(').removesuffix(')').split(','):
                 button[int(n)] = 1
             buttons.append(button)
+        elif d.startswith("?"):
+            expected_result = int(d.replace("?",""))
 
     # sort to prioritize using longest buttons the most times
     buttons.sort(key=lambda bt: sum(bt), reverse=True)
@@ -116,16 +130,19 @@ for line in l8:
         vector.append(target[i])
         vectors.append(vector)
 
-    print(vectors)
+    # print(vectors)
 
     gaussian = resolve_variables(vectors)
 
-    print(gaussian)
-    print([sum([v[i] for v in gaussian]) for i in range(len(gaussian[0]))])
+    # print(gaussian)
+    # print([sum([v[i] for v in gaussian]) for i in range(len(gaussian[0]))])
 
     # reconstruct
-    print(">>", [sum(v[i] * gaussian[j][-1] for j,v in enumerate(buttons)) for i in range(len(buttons[0]))])
+    # print(">>", [sum(v[i] * gaussian[j][-1] for j,v in enumerate(buttons)) for i in range(len(buttons[0]))])
 
-    print(sum([g[-1] for g in gaussian]))
+    partial_result = sum([g[-1] for g in gaussian])
+    print(partial_result)
+    if expected_result is not None:
+        assert partial_result == expected_result
 
 
