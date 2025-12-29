@@ -86,12 +86,17 @@ def resolve_variables(input_vectors: list[list[int]], max_reps: int) -> list[lis
 
     if all([sum(v[:-1])==1 for v in gaussian]):
         if any(v[-1]<0 for v in gaussian):
+            # print("failing")
             return Failure.NEGATIVE_VECTOR
+        # print("returning")
         return gaussian
 
     for v in gaussian:
-        if v[-1] < 0 and all(x>0 for x in v[:-1]):
+        if v[-1] < 0 and all(x>=0 for x in v[:-1]):
+            # print("failing2")
             return Failure.NEGATIVE_VECTOR
+
+    # breakpoint()
 
     best_gaussian = Failure.NOT_FOUND
     best_sum = 1000000000
@@ -108,6 +113,8 @@ def resolve_variables(input_vectors: list[list[int]], max_reps: int) -> list[lis
             if any([x < 0 for x in v[:-1]]):
                 max_val = max_reps + 1
             bindings.append((max_val, idx, v_idx))
+
+    # breakpoint()
 
     if len(bindings) > 0:
         bindings.sort(key=lambda x: x[0])
@@ -180,6 +187,7 @@ def resolve_variables(input_vectors: list[list[int]], max_reps: int) -> list[lis
     #             #     print(val,nresult)
     #         break
 
+    # print("returning 2")
     return best_gaussian
 
 
@@ -204,8 +212,8 @@ l15 = ["[.##..] (1,4) (1,2,3,4) (2,3) (0,3,4) (0,4) (3,4) (0,1,2,3) {25,22,8,43,
 lslow = ["[##.##.....] (1,3,7,8) (1,3,5,8) (0,2,3,4,5,6,8) (8) (0,1,2,3,5,7,8,9) (0,2,6,7) (4,6,7) (0,1,7,8,9) (2,3,5,8,9) (0,4,5,6) (1,4,5,9) (2,3,4,6,8,9) (2,4,6,8,9) {220,54,231,228,238,235,238,54,267,70}"]
 
 
-# for line in lslow:
-for line in sys.stdin:
+for line in lslow:
+# for line in sys.stdin:
     line = line.strip()
     data = line.split(" ")
     print(line)
