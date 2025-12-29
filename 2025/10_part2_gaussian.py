@@ -17,11 +17,13 @@ def gauss(vectors: list[list[int]]) -> list[list[int]]:
     n = min(len(matrix), len(matrix[0]))
     for i in range(n):
         selected = i
-        for j in range(i,n):
-            if matrix[j][i] == 1:
+        current_best = len(matrix[i]) + 1
+        for j in range(i,len(matrix)):
+            non_zero_count = len([m for m in matrix[j][:-1] if m != 0])
+            if matrix[j][i] == 1 and non_zero_count < current_best:
+                current_best = non_zero_count
                 selected = j
-                break
-            elif matrix[j][i] != 0:
+            elif matrix[j][i] != 0 and current_best == len(matrix[i]) + 1:
                 selected = j
 
         if selected != i:
@@ -33,37 +35,40 @@ def gauss(vectors: list[list[int]]) -> list[list[int]]:
             elif all([v%matrix[i][i] == 0 for v in matrix[i]]):
                 matrix[i] = [v // matrix[i][i] for v in matrix[i]]
 
-        for j in range(n):
-            if matrix[j][i] != 0 and matrix[i][i] != 0 and j != i:
-                times = matrix[j][i] // matrix[i][i]
-                matrix[j] = [x - times * y for x,y in zip(matrix[j],matrix[i])]
+        for j,v in enumerate(matrix):
+            if v[i] != 0 and matrix[i][i] != 0 and j != i:
+                times = v[i] // matrix[i][i]
+                # print(f"subtracting {i} times {times} from {j}")
+                matrix[j] = [x - times * y for x,y in zip(v,matrix[i])]
 
     # remove rows with all 0s
     matrix = [m for m in matrix if any(x != 0 for x in m)]
-
     return matrix
 
 def loop_gauss_till_halt(vectors_original: list[list[int]]) -> list[list[int]]:
     vectors = vectors_original
     gaussian = gauss(vectors)
     while vectors != gaussian:
-        # print(vectors, "??", gaussian)
+        # print("g1", vectors, "??", gaussian)
         vectors = gaussian
         gaussian = gauss(vectors)
     return gaussian
 
 def guess_target(input_vectors: list[list[int]]) -> list[list[int]] | Failure:
     starting_sum = max([v[-1] for v in input_vectors])
+    max_reps = sum([v[-1] for v in input_vectors])
     gaussian_result = Failure.NOT_FOUND
-    while isinstance(gaussian_result, Failure):
+    # starting_sum = max_reps = 87
+    while isinstance(gaussian_result, Failure) and starting_sum <= max_reps:
         print(f"trying {starting_sum}")
         tv = ([1] * (len(input_vectors[0])-1)) + [starting_sum]
-        gaussian_result = resolve_variables(input_vectors + [tv])
+        gaussian_result = resolve_variables(input_vectors + [tv], max_reps)
         starting_sum += 1
     return gaussian_result
 
-def resolve_variables(input_vectors: list[list[int]]) -> list[list[int]] | Failure:
+def resolve_variables(input_vectors: list[list[int]], max_reps: int) -> list[list[int]] | Failure:
     def bind_var(idx: int, val: int, selected_vector: list[int]) -> list[list[int]] | Failure:
+        # print(f"binding {idx} {selected_vector} to {val}")
         split_first = [0] * len(selected_vector)
         split_first[idx] = 1
         split_first[-1] = val
@@ -73,26 +78,24 @@ def resolve_variables(input_vectors: list[list[int]]) -> list[list[int]] | Failu
         split_second[-1] -= val
 
         new_input = [v.copy() for v in input_vectors] + [split_first, split_second]
-        return resolve_variables(new_input)
+        return resolve_variables(new_input, max_reps)
 
     gaussian = loop_gauss_till_halt(input_vectors)
-    # gresult = [sum([v[i] for v in gaussian]) for i in range(len(gaussian[0]))]
-    # print(gaussian)
+    # print("g", gaussian)
 
     if all([sum(v[:-1])==1 for v in gaussian]):
         if any(v[-1]<0 for v in gaussian):
-            # breakpoint()
             return Failure.NEGATIVE_VECTOR
-        # breakpoint()
         return gaussian
 
-    # breakpoint()
     best_gaussian = Failure.NOT_FOUND
     best_sum = 1000000000
-    for v in gaussian[:-1]:
-        if sum([x for x in v[:-1]]) > 1 and v[-1] > 0:
-            idx = [i for i,y in enumerate(v) if y != 0][0]
-
+    for v in gaussian:
+        ones_cols = [i for i,y in enumerate(v[:-1]) if y == 1]
+        if len([x for x in v[:-1] if x !=0]) > 1 and v[-1] > 0 and ones_cols:
+            idx = ones_cols[0]
+            # if v[idx] != 1:
+            #     continue
             # lo = 0
             # hi = v[-1]
             # value_cache = {}
@@ -124,14 +127,17 @@ def resolve_variables(input_vectors: list[list[int]]) -> list[list[int]] | Failu
             #
             # return value_cache[lo]
 
-
-            for val in range(v[-1]+1)[::-1]:
+            # range(v[-1]+1)
+            max_val = v[-1]+1
+            if any([x < 0 for x in v[:-1]]):
+                max_val = max_reps + 1
+            for val in range(max_val)[::-1]:
                 nresult = bind_var(idx, val, v)
                 if not isinstance(nresult, Failure):
                     # return nresult
                     nsum = sum([v[-1] for v in nresult])
                     # if idx == 1:
-                    #     print(val,nsum)
+                    # print('val,nsum', val,nsum)
 
                     if best_sum > nsum:
                         best_sum = nsum
@@ -142,7 +148,6 @@ def resolve_variables(input_vectors: list[list[int]]) -> list[list[int]] | Failu
                 #     print(val,nresult)
             break
 
-    # breakpoint()
     return best_gaussian
 
 
@@ -151,11 +156,17 @@ l2 = ["[.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}"] # 10
 l3 = ["[..] (0,1) (1) (0) {3,3}"]
 l4 = ["[...] (0,2) (0,1) (0,1,2) {8,7,7}"]
 l5 = ["[##..] (1,3) (1) (1,2) (0,1) (2,3) {13,66,31,27}"] # 69
-l8 = ["[.##..] (1,2) (0,2,3,4) (0,1,3,4) {17,20,19,17,17} ?28?"]
+l_spr = [
+    "[.##..] (1,2) (0,2,3,4) (0,1,3,4) {17,20,19,17,17} ?28?",
+    "[##.#] (0) (0,1) (1,2,3) (1,2) (2,3) {184,206,50,38} ?234?", # 60 steps
+    "[.##.] (0,2) (1) (1,3) (0,3) (2,3) (3) {19,12,14,41} ?43?"
+]
 l9 = ["[##.#] (0) (0,1) (1,2,3) (1,2) (2,3) {184,206,50,38} ?234?"] # 60 steps
 l10 = ["[.##.] (0,2) (1) (1,3) (0,3) (2,3) (3) {19,12,14,41} ?43?"] # 1067 steps
 l11 = ["[##..#] (1,2,4) (1,2) (1,3,4) (1,2,3) (2,3) (0,2,3) (2,4) {13,49,69,58,49} ?88?"] # 95 958 steps
-l12 = ["[##....#...] (2,3,4,5,6,7) (0,1,2,3,4,6,9) (0,1,3,4,6,8,9) (1,2,3,4,6) (1,4,5,6,8,9) (2,4,5,8,9) (0,1,3,4,5,8,9) (0,1,2,6) (2,7,8,9) (1,2,4,8) (3,4,6,7,8,9) (0,2,5,7,8) (0,1,2,4,5,6,8,9) {79,95,119,80,137,88,128,63,122,126}"]
+l12 = ["[##....#...] (2,3,4,5,6,7) (0,1,2,3,4,6,9) (0,1,3,4,6,8,9) (1,2,3,4,6) (1,4,5,6,8,9) (2,4,5,8,9) (0,1,3,4,5,8,9) (0,1,2,6) (2,7,8,9) (1,2,4,8) (3,4,6,7,8,9) (0,2,5,7,8) (0,1,2,4,5,6,8,9) {79,95,119,80,137,88,128,63,122,126} ?164?"]
+l13 = ["[##...#....] (1,3,9) (0,1,2,3,4,7,8,9) (1,4,8) (3,5,8,9) (0,1,3,5,7,8,9) (0,2,4,6,7,8) (1,2,4,5,6,7,8,9) (0,6,8,9) (2,6) (0,2,6,8,9) (9) {38,32,35,25,17,22,46,28,49,53}"]
+l14 = ["[##.####] (0,2,5,6) (4) (0,2,4,6) (2,3,4,5) (0,1) (1,3,5) (3,4,5,6) (2,6) (0,3,4,5,6) {45,15,30,53,58,67,56} ?87?"]
 
 for line in sys.stdin:
     line = line.strip()
